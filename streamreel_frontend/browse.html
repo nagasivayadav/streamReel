@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamReel — Browse</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg:#0b0b0d; --ember:#e5432b; --gold:#e8b84b; --text:#f2f0ea;
+    --muted:#9c99a1; --card:#1b1a20;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; min-height:100vh; }
+
+  .nav{
+    position:fixed; top:0; left:0; right:0; z-index:50;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 48px; background:linear-gradient(180deg, rgba(11,11,13,0.95), transparent);
+  }
+  .logo{ font-family:'Bebas Neue',sans-serif; font-size:24px; color:var(--ember); }
+  .search-box{
+    display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.15); border-radius:4px; padding:7px 12px; width:240px;
+  }
+  .search-box input{ background:none; border:none; outline:none; color:var(--text); font-size:13px; width:100%; }
+  .logout-btn, .switch-btn{
+    background:rgba(255,255,255,0.1); border:none; color:var(--text);
+    padding:8px 14px; border-radius:4px; font-size:12.5px; cursor:pointer; margin-left:8px;
+  }
+  .logout-btn:hover, .switch-btn:hover{ background:rgba(255,255,255,0.2); }
+
+  /* ---- HERO BANNER ---- */
+  .hero{
+    position:relative; height:60vh; min-height:420px; width:100%;
+    background-size:cover; background-position:center top;
+    display:flex; align-items:flex-end;
+  }
+  .hero::after{
+    content:""; position:absolute; inset:0;
+    background: linear-gradient(0deg, var(--bg) 5%, transparent 55%),
+                linear-gradient(90deg, rgba(11,11,13,0.85) 0%, transparent 60%);
+  }
+  .hero-content{ position:relative; z-index:2; padding:0 48px 48px; max-width:560px; }
+  .hero-title{ font-family:'Bebas Neue',sans-serif; font-size:48px; line-height:1.05; margin-bottom:14px; }
+  .hero-meta{ font-size:13px; color:var(--muted); margin-bottom:16px; }
+  .hero-buttons{ display:flex; gap:12px; }
+  .hero-btn{
+    padding:11px 26px; border:none; border-radius:4px; font-size:14px; font-weight:700;
+    cursor:pointer; display:flex; align-items:center; gap:8px;
+  }
+  .hero-btn.play{ background:var(--text); color:#111; }
+  .hero-btn.play:hover{ background:#d9d6cf; }
+  .hero-btn.info{ background:rgba(255,255,255,0.18); color:var(--text); }
+  .hero-btn.info:hover{ background:rgba(255,255,255,0.28); }
+
+  /* ---- LANGUAGE FILTER ---- */
+  .lang-filter{
+    display:flex; gap:10px; padding:20px 48px 4px;
+  }
+  .lang-btn{
+    background:rgba(255,255,255,0.06); border:none; color:var(--muted);
+    padding:6px 16px; border-radius:20px; font-size:12.5px; font-weight:600;
+    cursor:pointer; transition:background 0.15s ease, color 0.15s ease;
+  }
+  .lang-btn:hover{ background:rgba(255,255,255,0.12); color:var(--text); }
+  .lang-btn.active{ background:var(--ember); color:#fff; }
+
+  main{ padding:20px 48px 60px; }
+  .row{ margin-bottom:36px; }
+  .row-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px; }
+  .row-title{ font-size:17px; font-weight:700; }
+  .row-sub{ font-size:12px; color:var(--muted); }
+
+  .row-track{ display:flex; gap:10px; overflow-x:auto; padding:4px 0 16px; scrollbar-width:none; }
+  .row-track::-webkit-scrollbar{ display:none; }
+
+  .card{
+    flex:0 0 auto; width:170px; height:255px; border-radius:6px; position:relative;
+    overflow:hidden; cursor:pointer; transition:transform 0.2s ease, box-shadow 0.2s ease;
+    background:var(--card); background-size:cover; background-position:center;
+  }
+  .card:hover{ transform:scale(1.07); z-index:3; box-shadow:0 12px 30px rgba(0,0,0,0.6); }
+  .card-overlay{
+    position:absolute; left:0; right:0; bottom:0; padding:10px 10px 12px;
+    background:linear-gradient(0deg, rgba(0,0,0,0.9), transparent);
+    font-size:12.5px; font-weight:600;
+  }
+  .card-lang-tag{
+    position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.6); color:var(--gold);
+    font-size:9.5px; font-weight:700; padding:2px 6px; border-radius:3px; text-transform:uppercase;
+  }
+
+  .empty-state, .loading-state, .error-state{
+    color:var(--muted); font-size:13.5px; padding:12px 0;
+  }
+  .error-state{ color:#ff6b57; }
+</style>
+</head>
+<body>
+
+  <nav class="nav">
+    <span class="logo">STREAMREEL</span>
+    <div class="search-box">
+      <span>🔍</span>
+      <input type="text" id="searchInput" placeholder="Titles, genres...">
+    </div>
+    <div>
+      <button class="switch-btn" id="switchProfileBtn">Switch Profile</button>
+      <button class="logout-btn" id="logoutBtn">Log out</button>
+    </div>
+  </nav>
+
+  <div class="hero" id="hero">
+    <div class="hero-content">
+      <div class="hero-title" id="heroTitle">Loading...</div>
+      <div class="hero-meta" id="heroMeta"></div>
+      <div class="hero-buttons">
+        <button class="hero-btn play" id="heroPlayBtn">▶ Play</button>
+        <button class="hero-btn info" id="heroInfoBtn">ⓘ More Info</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="lang-filter">
+    <button class="lang-btn active" data-lang="">All</button>
+    <button class="lang-btn" data-lang="English">English</button>
+    <button class="lang-btn" data-lang="Hindi">Hindi</button>
+    <button class="lang-btn" data-lang="Telugu">Telugu</button>
+  </div>
+
+  <main>
+    <div class="row" id="searchRow" style="display:none;">
+      <div class="row-head"><span class="row-title">Search Results</span></div>
+      <div class="row-track" id="searchResults"></div>
+    </div>
+
+    <div class="row">
+      <div class="row-head">
+        <span class="row-title">Recommended For You</span>
+        <span class="row-sub">Based on your watch history</span>
+      </div>
+      <div class="row-track" id="recommendedResults">
+        <span class="loading-state">Loading recommendations...</span>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="row-head">
+        <span class="row-title">Full Catalog</span>
+        <span class="row-sub">Everything available</span>
+      </div>
+      <div class="row-track" id="catalogResults">
+        <span class="loading-state">Loading catalog...</span>
+      </div>
+    </div>
+  </main>
+
+<script src="api.js"></script>
+<script>
+  if (!isLoggedIn()) {
+    window.location.href = "login.html";
+  }
+
+  const CURRENT_PROFILE_ID = localStorage.getItem("streamreel_profile_id");
+  if (!CURRENT_PROFILE_ID) {
+    window.location.href = "profiles.html";
+  }
+
+  let CURRENT_LANGUAGE = "";
+  let currentHeroVideo = null;
+
+  function formatDuration(seconds) {
+    if (!seconds) return "";
+    const mins = Math.round(seconds / 60);
+    return `${mins} min`;
+  }
+
+  function goToPlayer(v) {
+    window.location.href = `watch.html?title=${encodeURIComponent(v.title)}&url=${encodeURIComponent(v.hls_url || "")}`;
+  }
+
+  function renderCards(container, videos, emptyMessage) {
+    container.innerHTML = "";
+    if (!videos || videos.length === 0) {
+      container.innerHTML = `<span class="empty-state">${emptyMessage}</span>`;
+      return;
+    }
+    videos.forEach(v => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      if (v.poster_url) {
+        card.style.backgroundImage = `url('${v.poster_url}')`;
+      }
+      card.innerHTML = `
+        ${v.language ? `<div class="card-lang-tag">${v.language}</div>` : ''}
+        <div class="card-overlay">${v.title}</div>
+      `;
+      card.addEventListener('click', () => goToPlayer(v));
+      container.appendChild(card);
+    });
+  }
+
+  function renderHero(video) {
+    if (!video) return;
+    currentHeroVideo = video;
+    const hero = document.getElementById('hero');
+    if (video.backdrop_url) {
+      hero.style.backgroundImage = `url('${video.backdrop_url}')`;
+    }
+    document.getElementById('heroTitle').textContent = video.title;
+    document.getElementById('heroMeta').textContent =
+      [video.genre, video.language, formatDuration(video.duration)].filter(Boolean).join(" • ");
+  }
+
+  async function loadHero() {
+    try {
+      const featured = await listFeaturedVideos();
+      if (featured && featured.length > 0) {
+        renderHero(featured[Math.floor(Math.random() * featured.length)]);
+      }
+    } catch (err) {
+      // Hero is decorative — fail quietly, rest of the page still works.
+      console.log("Couldn't load featured videos:", err.message);
+    }
+  }
+
+  async function loadCatalog() {
+    const el = document.getElementById('catalogResults');
+    try {
+      const videos = await listVideos(null, CURRENT_LANGUAGE);
+      renderCards(el, videos, "No videos in the catalog yet.");
+    } catch (err) {
+      el.innerHTML = `<span class="error-state">Couldn't load catalog: ${err.message}</span>`;
+    }
+  }
+
+  async function loadRecommendations() {
+    const el = document.getElementById('recommendedResults');
+    try {
+      const videos = await getRecommendations(CURRENT_PROFILE_ID);
+      renderCards(el, videos, "Watch something to get personalized recommendations.");
+    } catch (err) {
+      el.innerHTML = `<span class="error-state">Couldn't load recommendations: ${err.message}</span>`;
+    }
+  }
+
+  async function runSearch(query) {
+    const row = document.getElementById('searchRow');
+    const el = document.getElementById('searchResults');
+    if (!query) {
+      row.style.display = "none";
+      return;
+    }
+    row.style.display = "block";
+    el.innerHTML = `<span class="loading-state">Searching...</span>`;
+    try {
+      const videos = await searchVideos(query);
+      renderCards(el, videos, "No matches found.");
+    } catch (err) {
+      el.innerHTML = `<span class="error-state">Search failed: ${err.message}</span>`;
+    }
+  }
+
+  let searchDebounce;
+  document.getElementById('searchInput').addEventListener('input', (e) => {
+    clearTimeout(searchDebounce);
+    const value = e.target.value.trim();
+    searchDebounce = setTimeout(() => runSearch(value), 350);
+  });
+
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      CURRENT_LANGUAGE = btn.dataset.lang;
+      loadCatalog();
+    });
+  });
+
+  document.getElementById('heroPlayBtn').addEventListener('click', () => {
+    if (currentHeroVideo) goToPlayer(currentHeroVideo);
+  });
+  document.getElementById('heroInfoBtn').addEventListener('click', () => {
+    if (currentHeroVideo) alert(`${currentHeroVideo.title}\n\n${currentHeroVideo.genre || ""} • ${currentHeroVideo.language || ""}`);
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', logout);
+  document.getElementById('switchProfileBtn').addEventListener('click', () => {
+    window.location.href = "profiles.html";
+  });
+
+  loadHero();
+  loadCatalog();
+  loadRecommendations();
+</script>
+
+</body>
+</html>

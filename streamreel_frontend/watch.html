@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>StreamReel — Watch</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+  :root{ --bg:#0b0b0d; --ember:#e5432b; --text:#f2f0ea; --muted:#9c99a1; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{
+    background:var(--bg); color:var(--text); font-family:'Inter',sans-serif;
+    min-height:100vh; display:flex; flex-direction:column; align-items:center;
+  }
+  .top-bar{ width:100%; padding:16px 32px; display:flex; align-items:center; gap:16px; }
+  .back-link{ color:var(--text); text-decoration:none; font-size:20px; }
+  .back-link:hover{ color:var(--ember); }
+  .logo{ font-family:'Bebas Neue',sans-serif; font-size:20px; color:var(--ember); }
+  video{ width:92%; max-width:1000px; margin-top:24px; border-radius:8px; background:#000; }
+  h1{ font-family:'Bebas Neue',sans-serif; font-size:28px; margin:18px 0 4px; text-align:center; }
+  .no-url{ color:var(--muted); margin-top:60px; font-size:14px; }
+</style>
+</head>
+<body>
+  <div class="top-bar">
+    <a class="back-link" href="browse.html">&larr;</a>
+    <span class="logo">STREAMREEL</span>
+  </div>
+  <h1 id="videoTitle">Loading...</h1>
+  <video id="player" controls autoplay></video>
+  <div class="no-url" id="noUrlMsg" style="display:none;">No video URL available for this title.</div>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const title = params.get('title') || 'Untitled';
+  const url = params.get('url');
+
+  document.getElementById('videoTitle').textContent = title;
+
+  if (url) {
+    document.getElementById('player').src = url;
+  } else {
+    document.getElementById('player').style.display = 'none';
+    document.getElementById('noUrlMsg').style.display = 'block';
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamReel — Sign In</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg:#0b0b0d; --panel:#16151a; --ember:#e5432b; --gold:#e8b84b;
+    --text:#f2f0ea; --muted:#8a8790; --input-bg:#1f1e24;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; }
+  body{
+    background:var(--bg); color:var(--text); font-family:'Inter',sans-serif;
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    position:relative; overflow:hidden;
+  }
+  body::before{
+    content:""; position:fixed; inset:0;
+    background:
+      radial-gradient(ellipse at 50% 20%, rgba(229,67,43,0.10), transparent 55%),
+      radial-gradient(ellipse at 50% 100%, rgba(0,0,0,0.7), transparent 60%),
+      linear-gradient(180deg, #0e0d10 0%, #0b0b0d 60%);
+    z-index:0;
+  }
+  .reel-rail{
+    position:fixed; top:0; bottom:0; width:34px; z-index:1;
+    display:flex; flex-direction:column; justify-content:space-evenly; align-items:center;
+    background: repeating-linear-gradient(180deg, #050505 0 2px, #0a0a0a 2px 4px);
+  }
+  .reel-rail.left{ left:0; } .reel-rail.right{ right:0; }
+  .sprocket{ width:14px; height:14px; background:var(--bg); border-radius:3px; }
+
+  .stage{
+    position:relative; z-index:2; width:100%; max-width:400px; margin:0 50px;
+    padding:44px 40px 36px; background:rgba(22,21,26,0.86);
+    border:1px solid rgba(255,255,255,0.06); border-radius:6px;
+    box-shadow:0 30px 80px rgba(0,0,0,0.55); backdrop-filter:blur(6px);
+  }
+  .brand .mark{ font-family:'Bebas Neue',sans-serif; font-size:34px; color:var(--ember); }
+  .clapper{ font-size:11px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); margin-top:2px; }
+  h1{ font-family:'Bebas Neue',sans-serif; font-size:30px; margin:22px 0; }
+
+  form{ display:flex; flex-direction:column; gap:14px; }
+  .field input{
+    width:100%; padding:15px 14px; background:var(--input-bg);
+    border:1px solid rgba(255,255,255,0.07); border-radius:4px; color:var(--text);
+    font-size:14.5px; outline:none;
+  }
+  .field input:focus{ border-color:var(--ember); background:#24232a; }
+
+  .submit{
+    margin-top:8px; padding:14px; background:var(--ember); color:#fff; border:none;
+    border-radius:4px; font-size:15px; font-weight:600; cursor:pointer;
+  }
+  .submit:hover{ background:#c9391f; }
+  .submit:disabled{ opacity:0.6; cursor:not-allowed; }
+
+  .toggle-line{ margin-top:20px; font-size:13.5px; color:var(--muted); text-align:center; }
+  .toggle-line a{ color:var(--text); font-weight:600; text-decoration:none; cursor:pointer; }
+  .toggle-line a:hover{ text-decoration:underline; }
+
+  .status{ font-size:13px; margin-top:14px; min-height:18px; text-align:center; }
+  .status.error{ color:#ff6b57; }
+  .status.success{ color:#5fd97f; }
+</style>
+</head>
+<body>
+
+  <div class="reel-rail left" aria-hidden="true">
+    <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+    <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+  </div>
+  <div class="reel-rail right" aria-hidden="true">
+    <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+    <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+  </div>
+
+  <main class="stage">
+    <div class="brand"><span class="mark">STREAMREEL</span></div>
+    <div class="clapper" id="modeLabel">Scene 01 · Sign In</div>
+    <h1 id="heading">Welcome back</h1>
+
+    <form id="authForm">
+      <div class="field">
+        <input type="email" id="email" placeholder="Email" required>
+      </div>
+      <div class="field">
+        <input type="password" id="password" placeholder="Password" required minlength="6">
+      </div>
+      <button type="submit" class="submit" id="submitBtn">Sign In</button>
+      <div class="status" id="status"></div>
+    </form>
+
+    <div class="toggle-line">
+      <span id="toggleText">New to StreamReel?</span>
+      <a id="toggleLink">Create an account</a>
+    </div>
+  </main>
+
+<script src="api.js"></script>
+<script>
+  let mode = "login"; // or "signup"
+
+  const form = document.getElementById('authForm');
+  const emailInput = document.getElementById('email');
+  const passwordInput = document.getElementById('password');
+  const statusEl = document.getElementById('status');
+  const submitBtn = document.getElementById('submitBtn');
+  const heading = document.getElementById('heading');
+  const modeLabel = document.getElementById('modeLabel');
+  const toggleText = document.getElementById('toggleText');
+  const toggleLink = document.getElementById('toggleLink');
+
+  // Already logged in? Skip straight to browse.
+  if (isLoggedIn()) {
+    window.location.href = "browse.html";
+  }
+
+  toggleLink.addEventListener('click', () => {
+    mode = mode === "login" ? "signup" : "login";
+    if (mode === "signup") {
+      heading.textContent = "Create your account";
+      modeLabel.textContent = "Scene 01 · Sign Up";
+      submitBtn.textContent = "Sign Up";
+      toggleText.textContent = "Already have an account?";
+      toggleLink.textContent = "Sign in";
+    } else {
+      heading.textContent = "Welcome back";
+      modeLabel.textContent = "Scene 01 · Sign In";
+      submitBtn.textContent = "Sign In";
+      toggleText.textContent = "New to StreamReel?";
+      toggleLink.textContent = "Create an account";
+    }
+    statusEl.textContent = "";
+    statusEl.className = "status";
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    statusEl.textContent = "";
+    statusEl.className = "status";
+    submitBtn.disabled = true;
+    submitBtn.textContent = mode === "login" ? "Signing in..." : "Creating account...";
+
+    try {
+      if (mode === "login") {
+        await login(emailInput.value.trim(), passwordInput.value);
+      } else {
+        await signup(emailInput.value.trim(), passwordInput.value);
+      }
+      statusEl.textContent = "Success — redirecting...";
+      statusEl.className = "status success";
+      setTimeout(() => { window.location.href = "browse.html"; }, 500);
+    } catch (err) {
+      statusEl.textContent = err.message || "Something went wrong.";
+      statusEl.className = "status error";
+      submitBtn.disabled = false;
+      submitBtn.textContent = mode === "login" ? "Sign In" : "Sign Up";
+    }
+  });
+</script>
+
+</body>
+</html>
