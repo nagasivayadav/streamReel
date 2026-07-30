@@ -12,41 +12,78 @@ Or inside the running docker container:
 import sys
 import os
 
-# Allow running this file directly (`python scripts/seed_videos.py`) as well
-# as as a module (`python -m scripts.seed_videos`).
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database import SessionLocal, engine, Base
 from app import models
 
+# Poster = upright card image (2:3 ratio look), Backdrop = wide hero banner image.
+# Using picsum.photos placeholder images (free, no login, no copyright issue) —
+# swap these for real artwork whenever you have it.
 SAMPLE_VIDEOS = [
-    {"title": "Ridge Line", "genre": "Drama", "duration": 6420, "hls_url": "/media/ridge-line/master.m3u8"},
-    {"title": "Circuit Breakers", "genre": "Sci-Fi", "duration": 5580, "hls_url": "/media/circuit-breakers/master.m3u8"},
-    {"title": "Late Checkout", "genre": "Comedy", "duration": 4980, "hls_url": "/media/late-checkout/master.m3u8"},
-    {"title": "The Long Ferry", "genre": "Thriller", "duration": 7140, "hls_url": "/media/long-ferry/master.m3u8"},
-    {"title": "Paper Moons", "genre": "Documentary", "duration": 3600, "hls_url": "/media/paper-moons/master.m3u8"},
-    {"title": "Signal Loss", "genre": "Sci-Fi", "duration": 6000, "hls_url": "/media/signal-loss/master.m3u8"},
-    {"title": "Kitchen Table Wars", "genre": "Comedy", "duration": 5400, "hls_url": "/media/kitchen-table-wars/master.m3u8"},
-    {"title": "Northbound", "genre": "Drama", "duration": 6900, "hls_url": "/media/northbound/master.m3u8"},
-    {"title": "Small Hours", "genre": "Thriller", "duration": 5760, "hls_url": "/media/small-hours/master.m3u8"},
-    {"title": "The Cartographer", "genre": "Documentary", "duration": 4200, "hls_url": "/media/the-cartographer/master.m3u8"},
-    {"title": "Glasshouse", "genre": "Drama", "duration": 6300, "hls_url": "/media/glasshouse/master.m3u8"},
-    {"title": "Static Bloom", "genre": "Sci-Fi", "duration": 5940, "hls_url": "/media/static-bloom/master.m3u8"},
-    {"title": "Ridge Line", "genre": "Drama", "language": "English", "duration": 596, "hls_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"},
-    {"title": "Circuit Breakers", "genre": "Sci-Fi", "language": "English", "duration": 653, "hls_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"},
-    {"title": "Vaana Jallu", "genre": "Drama", "language": "Telugu", "duration": 734, "hls_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4"},
-    {"title": "Prema Katha", "genre": "Comedy", "language": "Telugu", "duration": 15, "hls_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/friday.mp4"},
-    {"title": "Dilse Dosti", "genre": "Drama", "language": "Hindi", "duration": 653, "hls_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"},
-    {"title": "Shehar Ki Raatein", "genre": "Thriller", "language": "Hindi", "duration": 734, "hls_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4"},
-    {"title": "Late Checkout", "genre": "Comedy", "language": "English", "duration": 15, "hls_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/friday.mp4"},
-    {"title": "Nadi ఒడ్డున", "genre": "Documentary", "language": "Telugu", "duration": 596, "hls_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"},
-    {"title": "Yaadon Ka Safar", "genre": "Documentary", "language": "Hindi", "duration": 596, "hls_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"},
-    {"title": "Signal Loss", "genre": "Sci-Fi", "language": "English", "duration": 653, "hls_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"},
+    {"title": "Ridge Line", "genre": "Drama", "language": "English", "duration": 596,
+     "hls_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+     "poster_url": "https://picsum.photos/seed/ridgeline/400/600",
+     "backdrop_url": "https://picsum.photos/seed/ridgeline/1280/720",
+     "is_featured": True},
+
+    {"title": "Circuit Breakers", "genre": "Sci-Fi", "language": "English", "duration": 653,
+     "hls_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+     "poster_url": "https://picsum.photos/seed/circuitbreakers/400/600",
+     "backdrop_url": "https://picsum.photos/seed/circuitbreakers/1280/720",
+     "is_featured": True},
+
+    {"title": "Vaana Jallu", "genre": "Drama", "language": "Telugu", "duration": 734,
+     "hls_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+     "poster_url": "https://picsum.photos/seed/vaanajallu/400/600",
+     "backdrop_url": "https://picsum.photos/seed/vaanajallu/1280/720",
+     "is_featured": True},
+
+    {"title": "Prema Katha", "genre": "Comedy", "language": "Telugu", "duration": 15,
+     "hls_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/friday.mp4",
+     "poster_url": "https://picsum.photos/seed/premakatha/400/600",
+     "backdrop_url": "https://picsum.photos/seed/premakatha/1280/720",
+     "is_featured": False},
+
+    {"title": "Dilse Dosti", "genre": "Drama", "language": "Hindi", "duration": 653,
+     "hls_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+     "poster_url": "https://picsum.photos/seed/dilsedosti/400/600",
+     "backdrop_url": "https://picsum.photos/seed/dilsedosti/1280/720",
+     "is_featured": False},
+
+    {"title": "Shehar Ki Raatein", "genre": "Thriller", "language": "Hindi", "duration": 734,
+     "hls_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+     "poster_url": "https://picsum.photos/seed/sheharkiraatein/400/600",
+     "backdrop_url": "https://picsum.photos/seed/sheharkiraatein/1280/720",
+     "is_featured": False},
+
+    {"title": "Late Checkout", "genre": "Comedy", "language": "English", "duration": 15,
+     "hls_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/friday.mp4",
+     "poster_url": "https://picsum.photos/seed/latecheckout/400/600",
+     "backdrop_url": "https://picsum.photos/seed/latecheckout/1280/720",
+     "is_featured": False},
+
+    {"title": "Nadi Oddu", "genre": "Documentary", "language": "Telugu", "duration": 596,
+     "hls_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+     "poster_url": "https://picsum.photos/seed/nadioddu/400/600",
+     "backdrop_url": "https://picsum.photos/seed/nadioddu/1280/720",
+     "is_featured": False},
+
+    {"title": "Yaadon Ka Safar", "genre": "Documentary", "language": "Hindi", "duration": 596,
+     "hls_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+     "poster_url": "https://picsum.photos/seed/yaadonkasafar/400/600",
+     "backdrop_url": "https://picsum.photos/seed/yaadonkasafar/1280/720",
+     "is_featured": False},
+
+    {"title": "Signal Loss", "genre": "Sci-Fi", "language": "English", "duration": 653,
+     "hls_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+     "poster_url": "https://picsum.photos/seed/signalloss/400/600",
+     "backdrop_url": "https://picsum.photos/seed/signalloss/1280/720",
+     "is_featured": False},
 ]
 
+
 def seed():
-    # Make sure tables exist — mirrors what main.py does on startup, so this
-    # script works even against a completely fresh database.
     Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
