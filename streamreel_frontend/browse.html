@@ -256,7 +256,10 @@
   async function loadRecommendations() {
     const el = document.getElementById('recommendedResults');
     try {
-      const videos = await getRecommendations(CURRENT_PROFILE_ID);
+      let videos = await getRecommendations(CURRENT_PROFILE_ID);
+      if (CURRENT_LANGUAGE) {
+        videos = videos.filter(v => v.language === CURRENT_LANGUAGE);
+      }
       renderCards(el, videos, "Watch something to get personalized recommendations.");
     } catch (err) {
       el.innerHTML = `<span class="error-state">Couldn't load recommendations: ${err.message}</span>`;
@@ -293,6 +296,7 @@
       btn.classList.add('active');
       CURRENT_LANGUAGE = btn.dataset.lang;
       loadCatalog();
+      loadRecommendations();
     });
   });
 
