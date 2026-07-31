@@ -210,11 +210,10 @@
       }
       const badge = badgeFor(v);
       card.innerHTML = `
-        <div class="card-gradient"></div>
         ${badge ? `<div class="card-badge ${badge.cls}">${badge.label}</div>` : ''}
         ${v.language ? `<div class="card-lang-tag">${v.language}</div>` : ''}
-        <div class="card-title">${v.title}</div>
       `;
+      card.title = v.title;
       card.addEventListener('click', () => goToPlayer(v));
       container.appendChild(card);
     });
