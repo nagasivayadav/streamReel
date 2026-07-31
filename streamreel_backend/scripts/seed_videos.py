@@ -25,13 +25,17 @@ from app import models
 
 
 def poster_for(title):
-    text = quote(title)
-    return f"https://placehold.co/400x600/1b1a20/e8b84b?text={text}&font=roboto"
+    # Photographic-looking placeholder image (real stock photo, not tied to
+    # any actual film or actor). Seeded by title so the same movie always
+    # gets the same image. The title text itself is overlaid separately by
+    # browse.html's card gradient — no text is baked into the image here.
+    seed = quote(title.replace(" ", "-").lower())
+    return f"https://picsum.photos/seed/{seed}/400/600"
 
 
 def backdrop_for(title):
-    text = quote(title)
-    return f"https://placehold.co/1280x720/0b0b0d/f2f0ea?text={text}&font=roboto"
+    seed = quote(title.replace(" ", "-").lower())
+    return f"https://picsum.photos/seed/{seed}/1280/720"
 
 
 VIDEO_POOL = [
