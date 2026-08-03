@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamReel — Admin</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+  :root{ --bg:#0b0b0d; --ember:#e5432b; --gold:#e8b84b; --text:#f2f0ea; --muted:#9c99a1; --card:#1b1a20; --input-bg:#1f1e24; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; min-height:100vh; padding:32px 48px; }
+  h1{ font-family:'Bebas Neue',sans-serif; font-size:30px; color:var(--ember); margin-bottom:6px; }
+  .subtitle{ color:var(--muted); font-size:13px; margin-bottom:28px; }
+
+  .key-gate{ max-width:400px; margin:80px auto; text-align:center; }
+  .key-gate input{
+    width:100%; padding:13px 14px; background:var(--input-bg); border:1px solid rgba(255,255,255,0.1);
+    border-radius:4px; color:var(--text); font-size:14px; margin-bottom:12px;
+  }
+  .btn{
+    padding:11px 22px; border:none; border-radius:4px; font-size:13.5px; font-weight:700; cursor:pointer;
+  }
+  .btn-primary{ background:var(--ember); color:#fff; }
+  .btn-primary:hover{ background:#c9391f; }
+  .btn-ghost{ background:rgba(255,255,255,0.1); color:var(--text); }
+  .btn-ghost:hover{ background:rgba(255,255,255,0.2); }
+  .btn-danger{ background:#b3392b; color:#fff; }
+
+  .panel{ display:none; }
+  .panel.open{ display:block; }
+
+  .form-card{
+    background:var(--card); border-radius:8px; padding:24px; margin-bottom:32px;
+    display:grid; grid-template-columns:1fr 1fr; gap:14px; max-width:800px;
+  }
+  .form-card .full{ grid-column:1 / -1; }
+  .field label{ font-size:12px; color:var(--muted); display:block; margin-bottom:6px; }
+  .field input, .field select{
+    width:100%; padding:10px 12px; background:var(--input-bg); border:1px solid rgba(255,255,255,0.1);
+    border-radius:4px; color:var(--text); font-size:13.5px;
+  }
+  .checkbox-field{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); }
+
+  table{ width:100%; border-collapse:collapse; }
+  th, td{ text-align:left; padding:10px 12px; font-size:13px; border-bottom:1px solid rgba(255,255,255,0.06); }
+  th{ color:var(--muted); font-weight:600; text-transform:uppercase; font-size:11px; }
+  td img{ width:36px; height:54px; object-fit:cover; border-radius:3px; }
+  .row-actions{ display:flex; gap:8px; }
+  .row-actions button{ padding:5px 10px; font-size:12px; }
+
+  .status-msg{ margin-top:10px; font-size:13px; }
+  .status-msg.error{ color:#ff6b57; }
+  .status-msg.success{ color:#5fd97f; }
+</style>
+</head>
+<body>
+
+  <div class="key-gate" id="keyGate">
+    <h1>Admin Access</h1>
+    <div class="subtitle">Enter your admin key to manage the catalog</div>
+    <input type="password" id="adminKeyInput" placeholder="Admin key">
+    <button class="btn btn-primary" id="unlockBtn" style="width:100%;">Unlock</button>
+    <div class="status-msg error" id="keyError"></div>
+  </div>
+
+  <div class="panel" id="adminPanel">
+    <h1>StreamReel Admin</h1>
+    <div class="subtitle">Add, edit, or remove movies from your catalog</div>
+
+    <div class="form-card">
+      <div class="field full"><label>Title</label><input type="text" id="f_title"></div>
+
+      <div class="field">
+        <label>Genre</label>
+        <select id="f_genre">
+          <option>Drama</option><option>Action</option><option>Comedy</option>
+          <option>Thriller</option><option>Romance</option><option>Sci-Fi</option>
+          <option>Documentary</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Language</label>
+        <select id="f_language">
+          <option>English</option><option>Hindi</option><option>Telugu</option>
+        </select>
+      </div>
+
+      <div class="field"><label>Duration (seconds)</label><input type="number" id="f_duration" value="6000"></div>
+      <div class="field checkbox-field" style="margin-top:26px;">
+        <input type="checkbox" id="f_featured"> <label for="f_featured">Show in hero banner (featured)</label>
+      </div>
+
+      <div class="field full"><label>Video URL (hls_url)</label><input type="text" id="f_hls_url"></div>
+      <div class="field full"><label>Poster image URL</label><input type="text" id="f_poster_url"></div>
+      <div class="field full"><label>Backdrop image URL</label><input type="text" id="f_backdrop_url"></div>
+
+      <div class="full" style="display:flex; gap:10px; margin-top:6px;">
+        <button class="btn btn-primary" id="saveBtn">Add Movie</button>
+        <button class="btn btn-ghost" id="cancelEditBtn" style="display:none;">Cancel Edit</button>
+      </div>
+      <div class="status-msg full" id="formStatus"></div>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Poster</th><th>Title</th><th>Genre</th><th>Language</th><th>Featured</th><th>Actions</th></tr>
+      </thead>
+      <tbody id="videoTableBody">
+        <tr><td colspan="6">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+<script>
+  const API_BASE = "https://streamreel-backend.onrender.com";
+  let ADMIN_KEY = "";
+  let editingId = null;
+
+  document.getElementById('unlockBtn').addEventListener('click', async () => {
+    ADMIN_KEY = document.getElementById('adminKeyInput').value.trim();
+    const errEl = document.getElementById('keyError');
+    errEl.textContent = "";
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/videos?key=${encodeURIComponent(ADMIN_KEY)}`);
+      const data = await res.json();
+      if (!res.ok || data.detail === "Invalid admin key") {
+        errEl.textContent = "Incorrect key.";
+        return;
+      }
+      document.getElementById('keyGate').style.display = 'none';
+      document.getElementById('adminPanel').classList.add('open');
+      renderTable(data);
+    } catch (err) {
+      errEl.textContent = "Couldn't reach the server: " + err.message;
+    }
+  });
+
+  function renderTable(videos) {
+    const body = document.getElementById('videoTableBody');
+    if (!videos || videos.length === 0) {
+      body.innerHTML = `<tr><td colspan="6">No movies yet.</td></tr>`;
+      return;
+    }
+    body.innerHTML = videos.map(v => `
+      <tr>
+        <td>${v.poster_url ? `<img src="${v.poster_url}">` : ''}</td>
+        <td>${v.title}</td>
+        <td>${v.genre || ''}</td>
+        <td>${v.language || ''}</td>
+        <td>${v.is_featured ? '★' : ''}</td>
+        <td class="row-actions">
+          <button class="btn btn-ghost" onclick='editVideo(${JSON.stringify(v)})'>Edit</button>
+          <button class="btn btn-danger" onclick="deleteVideo('${v.id}')">Delete</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  async function refreshTable() {
+    const res = await fetch(`${API_BASE}/api/admin/videos?key=${encodeURIComponent(ADMIN_KEY)}`);
+    const data = await res.json();
+    renderTable(data);
+  }
+
+  function editVideo(v) {
+    editingId = v.id;
+    document.getElementById('f_title').value = v.title || '';
+    document.getElementById('f_genre').value = v.genre || 'Drama';
+    document.getElementById('f_language').value = v.language || 'English';
+    document.getElementById('f_duration').value = v.duration || 0;
+    document.getElementById('f_featured').checked = !!v.is_featured;
+    document.getElementById('f_hls_url').value = v.hls_url || '';
+    document.getElementById('f_poster_url').value = v.poster_url || '';
+    document.getElementById('f_backdrop_url').value = v.backdrop_url || '';
+    document.getElementById('saveBtn').textContent = 'Save Changes';
+    document.getElementById('cancelEditBtn').style.display = 'inline-block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  document.getElementById('cancelEditBtn').addEventListener('click', resetForm);
+
+  function resetForm() {
+    editingId = null;
+    document.getElementById('f_title').value = '';
+    document.getElementById('f_duration').value = 6000;
+    document.getElementById('f_featured').checked = false;
+    document.getElementById('f_hls_url').value = '';
+    document.getElementById('f_poster_url').value = '';
+    document.getElementById('f_backdrop_url').value = '';
+    document.getElementById('saveBtn').textContent = 'Add Movie';
+    document.getElementById('cancelEditBtn').style.display = 'none';
+  }
+
+  document.getElementById('saveBtn').addEventListener('click', async () => {
+    const statusEl = document.getElementById('formStatus');
+    statusEl.textContent = "";
+    statusEl.className = "status-msg full";
+
+    const payload = {
+      title: document.getElementById('f_title').value.trim(),
+      genre: document.getElementById('f_genre').value,
+      language: document.getElementById('f_language').value,
+      duration: parseInt(document.getElementById('f_duration').value) || 0,
+      hls_url: document.getElementById('f_hls_url').value.trim(),
+      poster_url: document.getElementById('f_poster_url').value.trim(),
+      backdrop_url: document.getElementById('f_backdrop_url').value.trim(),
+      is_featured: document.getElementById('f_featured').checked,
+    };
+
+    if (!payload.title) {
+      statusEl.textContent = "Title is required.";
+      statusEl.className = "status-msg full error";
+      return;
+    }
+
+    try {
+      const url = editingId
+        ? `${API_BASE}/api/admin/videos/${editingId}?key=${encodeURIComponent(ADMIN_KEY)}`
+        : `${API_BASE}/api/admin/videos?key=${encodeURIComponent(ADMIN_KEY)}`;
+      const method = editingId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error('Request failed (' + res.status + ')');
+
+      statusEl.textContent = editingId ? "Movie updated." : "Movie added.";
+      statusEl.className = "status-msg full success";
+      resetForm();
+      refreshTable();
+    } catch (err) {
+      statusEl.textContent = err.message;
+      statusEl.className = "status-msg full error";
+    }
+  });
+
+  async function deleteVideo(id) {
+    if (!confirm("Delete this movie?")) return;
+    try {
+      await fetch(`${API_BASE}/api/admin/videos/${id}?key=${encodeURIComponent(ADMIN_KEY)}`, { method: 'DELETE' });
+      refreshTable();
+    } catch (err) {
+      alert("Couldn't delete: " + err.message);
+    }
+  }
+</script>
+
+</body>
+</html>
