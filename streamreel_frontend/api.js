@@ -1,7 +1,7 @@
 // api.js — the single place that knows how to talk to the backend.
 // Every page includes this file instead of writing its own fetch logic.
 
-const API_BASE = "https://streamreel-backend.onrender.com"; // change to your deployed backend URL in production
+const API_BASE = "https://streamreel-backend.onrender.com";
 
 function getToken() {
   return localStorage.getItem("streamreel_token");
@@ -115,6 +115,10 @@ async function saveWatchPosition(profileId, videoId, positionSeconds) {
 
 async function getResumePosition(profileId, videoId) {
   return apiRequest(`/api/watch-history/${profileId}/${videoId}`);
+}
+
+async function getWatchHistory(profileId) {
+  return apiRequest(`/api/watch-history/${profileId}`);
 }
 
 // ---- Recommendations ----

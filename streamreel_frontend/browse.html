@@ -144,6 +144,13 @@
       <div class="row-track" id="searchResults"></div>
     </div>
 
+    <div class="row" id="continueRow" style="display:none;">
+      <div class="row-head">
+        <span class="row-title">Continue Watching</span>
+      </div>
+      <div class="row-track" id="continueResults"></div>
+    </div>
+
     <div class="row">
       <div class="row-head">
         <span class="row-title">Recommended For You</span>
@@ -186,7 +193,7 @@
   }
 
   function goToPlayer(v) {
-    window.location.href = `watch.html?title=${encodeURIComponent(v.title)}&url=${encodeURIComponent(v.hls_url || "")}`;
+    window.location.href = `watch.html?id=${encodeURIComponent(v.id)}&title=${encodeURIComponent(v.title)}&url=${encodeURIComponent(v.hls_url || "")}`;
   }
 
   function badgeFor(video) {
@@ -265,6 +272,22 @@
     }
   }
 
+  async function loadContinueWatching() {
+    const row = document.getElementById('continueRow');
+    const el = document.getElementById('continueResults');
+    try {
+      const videos = await getWatchHistory(CURRENT_PROFILE_ID);
+      if (!videos || videos.length === 0) {
+        row.style.display = "none";
+        return;
+      }
+      row.style.display = "block";
+      renderCards(el, videos, "");
+    } catch (err) {
+      row.style.display = "none";
+    }
+  }
+
   async function runSearch(query) {
     const row = document.getElementById('searchRow');
     const el = document.getElementById('searchResults');
@@ -314,6 +337,7 @@
   loadHero();
   loadCatalog();
   loadRecommendations();
+  loadContinueWatching();
 </script>
 
 </body>
