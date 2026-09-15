@@ -25,17 +25,19 @@ from app import models
 
 
 def poster_for(title):
-    # Photographic-looking placeholder image (real stock photo, not tied to
-    # any actual film or actor). Seeded by title so the same movie always
-    # gets the same image. The title text itself is overlaid separately by
-    # browse.html's card gradient — no text is baked into the image here.
-    seed = quote(title.replace(" ", "-").lower())
-    return f"https://picsum.photos/seed/{seed}/400/600"
+    # Text-on-color placeholder: the title is printed directly on the image,
+    # so it always visually matches the movie name (unlike a random stock
+    # photo, which can never relate to the actual film without using real,
+    # copyrighted studio artwork).
+    from urllib.parse import quote
+    text = quote(title)
+    return f"https://placehold.co/400x600/1b1a20/e8b84b?text={text}&font=roboto"
 
 
 def backdrop_for(title):
-    seed = quote(title.replace(" ", "-").lower())
-    return f"https://picsum.photos/seed/{seed}/1280/720"
+    from urllib.parse import quote
+    text = quote(title)
+    return f"https://placehold.co/1280x720/0b0b0d/f2f0ea?text={text}&font=roboto"
 
 
 VIDEO_POOL = [
