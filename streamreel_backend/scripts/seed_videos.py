@@ -70,7 +70,8 @@ def _tmdb_lookup(title):
         backdrop = f"{TMDB_BACKDROP_BASE}{best['backdrop_path']}" if best.get("backdrop_path") else None
         _tmdb_cache[title] = (poster, backdrop)
         return (poster, backdrop)
-    except Exception:
+    except Exception as e:
+        print(f"TMDB lookup failed for '{title}': {e}")
         return (None, None)
 
 
