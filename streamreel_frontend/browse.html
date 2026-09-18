@@ -170,6 +170,8 @@
         <span class="loading-state">Loading catalog...</span>
       </div>
     </div>
+
+    <div id="genreRows"></div>
   </main>
 
 <script src="api.js"></script>
@@ -287,6 +289,36 @@
     }
   }
 
+  // Genre sections — a heading + row for each genre, so people can browse
+  // by what type of movie they're in the mood for.
+  const GENRE_SECTIONS = ["Action", "Adventure", "Horror", "Romance", "Comedy", "Drama", "Thriller"];
+
+  async function loadGenreRows() {
+    const container = document.getElementById('genreRows');
+    container.innerHTML = "";
+
+    for (const genre of GENRE_SECTIONS) {
+      try {
+        const videos = await listVideos(genre, CURRENT_LANGUAGE);
+        if (!videos || videos.length === 0) continue;
+
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.innerHTML = `
+          <div class="row-head">
+            <span class="row-title">${genre}</span>
+            <span class="row-sub">${genre === "Horror" ? "Ghost & thriller picks" : genre + " movies"}</span>
+          </div>
+          <div class="row-track" id="genre-${genre}"></div>
+        `;
+        container.appendChild(row);
+        renderCards(document.getElementById(`genre-${genre}`), videos, "");
+      } catch (err) {
+        // skip this genre row quietly if it fails to load
+      }
+    }
+  }
+
   async function runSearch(query) {
     const row = document.getElementById('searchRow');
     const el = document.getElementById('searchResults');
@@ -318,6 +350,7 @@
       CURRENT_LANGUAGE = btn.dataset.lang;
       loadCatalog();
       loadRecommendations();
+      loadGenreRows();
     });
   });
 
@@ -337,6 +370,7 @@
   loadCatalog();
   loadRecommendations();
   loadContinueWatching();
+  loadGenreRows();
 </script>
 
 </body>

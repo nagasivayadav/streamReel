@@ -17,7 +17,9 @@
   .logo{ font-family:'Bebas Neue',sans-serif; font-size:20px; color:var(--ember); }
   video{ width:92%; max-width:1000px; margin-top:24px; border-radius:8px; background:#000; }
   h1{ font-family:'Bebas Neue',sans-serif; font-size:28px; margin:18px 0 4px; text-align:center; }
-  .no-url{ color:var(--muted); margin-top:60px; font-size:14px; }
+  .status-msg{ color:var(--muted); margin-top:40px; font-size:14px; text-align:center; max-width:600px; padding:0 20px; }
+  .status-msg.error{ color:#ff6b57; }
+  .url-shown{ color:var(--muted); font-size:11px; margin-top:10px; word-break:break-all; max-width:600px; text-align:center; padding:0 20px; }
 </style>
 </head>
 <body>
@@ -26,62 +28,51 @@
     <span class="logo">STREAMREEL</span>
   </div>
   <h1 id="videoTitle">Loading...</h1>
-  <video id="player" controls autoplay></video>
-  <div class="no-url" id="noUrlMsg" style="display:none;">No video URL available for this title.</div>
+  <video id="player" controls></video>
+  <div class="status-msg" id="statusMsg"></div>
+  <div class="url-shown" id="urlShown"></div>
 
-<script src="api.js"></script>
 <script>
   const params = new URLSearchParams(window.location.search);
   const title = params.get('title') || 'Untitled';
   const url = params.get('url');
-  const videoId = params.get('id');
-  const profileId = localStorage.getItem('streamreel_profile_id');
 
   document.getElementById('videoTitle').textContent = title;
 
   const player = document.getElementById('player');
+  const statusMsg = document.getElementById('statusMsg');
+  const urlShown = document.getElementById('urlShown');
 
-  if (url) {
-    player.src = url;
-
-    // Only try to resume AFTER the browser knows the real video length —
-    // setting currentTime too early (or beyond the real duration) is what
-    // causes the video to appear to "skip"/jump on start.
-    player.addEventListener('loadedmetadata', () => {
-      if (videoId && profileId) {
-        getResumePosition(profileId, videoId)
-          .then(res => {
-            const saved = res && res.position_seconds ? res.position_seconds : 0;
-            // Clamp so we never seek past (or too close to) the real end.
-            const safePosition = Math.min(saved, Math.max(player.duration - 5, 0));
-            if (safePosition > 0) {
-              player.currentTime = safePosition;
-            }
-          })
-          .catch(() => {}); // fine if this fails, just start from 0
-      }
-    });
-
-    // Save progress every 10 seconds while playing.
-    let saveTimer = null;
-    player.addEventListener('play', () => {
-      if (saveTimer) return;
-      saveTimer = setInterval(() => {
-        if (videoId && profileId && !player.paused) {
-          saveWatchPosition(profileId, videoId, Math.floor(player.currentTime)).catch(() => {});
-        }
-      }, 10000);
-    });
-
-    // Also save once when the user leaves the page.
-    window.addEventListener('beforeunload', () => {
-      if (videoId && profileId) {
-        saveWatchPosition(profileId, videoId, Math.floor(player.currentTime)).catch(() => {});
-      }
-    });
+  if (!url) {
+    statusMsg.textContent = "No video URL was provided for this title.";
+    statusMsg.className = "status-msg error";
   } else {
-    player.style.display = 'none';
-    document.getElementById('noUrlMsg').style.display = 'block';
+    statusMsg.textContent = "Loading video...";
+    urlShown.textContent = url;
+
+    player.addEventListener('loadeddata', () => {
+      statusMsg.textContent = "";
+    });
+
+    player.addEventListener('error', () => {
+      let reason = "Unknown error";
+      if (player.error) {
+        switch (player.error.code) {
+          case 1: reason = "Loading was aborted."; break;
+          case 2: reason = "A network error occurred while loading."; break;
+          case 3: reason = "The video could not be decoded (unsupported format)."; break;
+          case 4: reason = "This video format/source is not supported, or the link is broken."; break;
+        }
+      }
+      statusMsg.textContent = "Couldn't play this video: " + reason;
+      statusMsg.className = "status-msg error";
+    });
+
+    player.src = url;
+    player.load();
+    player.play().catch(() => {
+      // Autoplay can be blocked by the browser — fine, user can press play manually.
+    });
   }
 </script>
 </body>
