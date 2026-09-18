@@ -24,20 +24,64 @@ from app.database import SessionLocal, engine, Base
 from app import models
 
 
-def poster_for(title):
-    # Text-on-color placeholder: the title is printed directly on the image,
-    # so it always visually matches the movie name (unlike a random stock
-    # photo, which can never relate to the actual film without using real,
-    # copyrighted studio artwork).
-    from urllib.parse import quote
+import requests
+
+# Get a free key from https://www.themoviedb.org/settings/api and paste it here.
+TMDB_API_KEY = "f518211c0ce9567e09ced7520d9cf823"
+TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
+TMDB_BACKDROP_BASE = "https://image.tmdb.org/t/p/w1280"
+
+# Fallback used only if a title can't be found on TMDB or the API key is missing.
+def _fallback_poster(title):
     text = quote(title)
     return f"https://placehold.co/400x600/1b1a20/e8b84b?text={text}&font=roboto"
 
 
-def backdrop_for(title):
-    from urllib.parse import quote
+def _fallback_backdrop(title):
     text = quote(title)
     return f"https://placehold.co/1280x720/0b0b0d/f2f0ea?text={text}&font=roboto"
+
+
+_tmdb_cache = {}
+
+
+def _tmdb_lookup(title):
+    """Searches TMDB for a title and returns (poster_url, backdrop_url), or
+    (None, None) if not found / API key not set / request fails."""
+    if title in _tmdb_cache:
+        return _tmdb_cache[title]
+
+    if not TMDB_API_KEY or TMDB_API_KEY == "PASTE_YOUR_TMDB_API_KEY_HERE":
+        return (None, None)
+
+    try:
+        resp = requests.get(
+            "https://api.themoviedb.org/3/search/movie",
+            params={"api_key": TMDB_API_KEY, "query": title},
+            timeout=8,
+        )
+        results = resp.json().get("results", [])
+        if not results:
+            _tmdb_cache[title] = (None, None)
+            return (None, None)
+
+        best = results[0]
+        poster = f"{TMDB_IMAGE_BASE}{best['poster_path']}" if best.get("poster_path") else None
+        backdrop = f"{TMDB_BACKDROP_BASE}{best['backdrop_path']}" if best.get("backdrop_path") else None
+        _tmdb_cache[title] = (poster, backdrop)
+        return (poster, backdrop)
+    except Exception:
+        return (None, None)
+
+
+def poster_for(title):
+    poster, _ = _tmdb_lookup(title)
+    return poster or _fallback_poster(title)
+
+
+def backdrop_for(title):
+    _, backdrop = _tmdb_lookup(title)
+    return backdrop or _fallback_backdrop(title)
 
 
 VIDEO_POOL = [
