@@ -42,6 +42,9 @@ def reset_videos(key: str = ""):
 
     db = SessionLocal()
     try:
+        # Clear watch history first — it references videos by ID, so old
+        # entries block deletion of videos via a foreign key constraint.
+        db.query(models.WatchHistory).delete()
         deleted = db.query(models.Video).delete()
         db.commit()
     finally:
