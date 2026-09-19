@@ -266,6 +266,110 @@ CLASSIC_FULL_MOVIES = [
 SAMPLE_VIDEOS = SAMPLE_VIDEOS + CLASSIC_FULL_MOVIES
 
 
+# --- Big genre expansion: pulls real popular movies directly from TMDB ---
+# --- for each requested genre, using real titles/posters/backdrops.    ---
+# --- Videos use the sample-clip pool (a real trailer lookup per movie  ---
+# --- would mean 400+ extra API calls and risk the request timing out). ---
+
+TMDB_GENRE_IDS = {
+    "Action": 28, "Animation": 16, "Comedy": 35, "Documentary": 99,
+    "Drama": 18, "Fantasy": 14, "Horror": 27, "Mystery": 9648,
+    "Romance": 10749, "Science Fiction": 878, "Thriller": 53, "Western": 37,
+}
+
+
+def _trailer_for_id(movie_id, title):
+    try:
+        vid_resp = requests.get(
+            f"https://api.themoviedb.org/3/movie/{movie_id}/videos",
+            params={"api_key": TMDB_API_KEY},
+            timeout=6,
+        )
+        for v in vid_resp.json().get("results", []):
+            if v.get("site") == "YouTube" and v.get("type") == "Trailer":
+                return f"https://www.youtube.com/embed/{v['key']}?autoplay=1"
+    except Exception as e:
+        print(f"Trailer lookup failed for '{title}': {e}")
+    return None
+
+
+def fetch_movies_by_genre(genre_name, count=20):
+    """Pulls `count` popular real movies for one genre from TMDB, including
+    a real trailer when TMDB has one. Returns [] if the API key is missing
+    or requests fail — never crashes the seed process."""
+    if not TMDB_API_KEY or TMDB_API_KEY == "PASTE_YOUR_TMDB_API_KEY_HERE":
+        return []
+
+    genre_id = TMDB_GENRE_IDS.get(genre_name)
+    if not genre_id:
+        return []
+
+    movies = []
+    page = 1
+    while len(movies) < count and page <= 3:
+        try:
+            resp = requests.get(
+                "https://api.themoviedb.org/3/discover/movie",
+                params={
+                    "api_key": TMDB_API_KEY,
+                    "with_genres": genre_id,
+                    "sort_by": "popularity.desc",
+                    "page": page,
+                },
+                timeout=10,
+            )
+            results = resp.json().get("results", [])
+        except Exception as e:
+            print(f"TMDB discover failed for genre '{genre_name}' page {page}: {e}")
+            break
+
+        if not results:
+            break
+
+        for r in results:
+            if len(movies) >= count:
+                break
+            title = r.get("title")
+            if not title:
+                continue
+            poster = f"{TMDB_IMAGE_BASE}{r['poster_path']}" if r.get("poster_path") else _fallback_poster(title)
+            backdrop = f"{TMDB_BACKDROP_BASE}{r['backdrop_path']}" if r.get("backdrop_path") else _fallback_backdrop(title)
+            fallback_video = VIDEO_POOL[len(movies) % len(VIDEO_POOL)]
+            trailer = _trailer_for_id(r.get("id"), title) if r.get("id") else None
+            movies.append({
+                "title": title,
+                "genre": genre_name,
+                "language": "English",
+                "duration": 6000,
+                "hls_url": trailer or fallback_video,
+                "poster_url": poster,
+                "backdrop_url": backdrop,
+                "is_featured": False,
+            })
+
+        page += 1
+
+    return movies
+
+
+def build_genre_expansion():
+    """Builds the multi-genre catalog addition (~20 movies per genre across
+    12 genres = up to ~240 titles, each with a real trailer where TMDB has
+    one), skipping any title already in SAMPLE_VIDEOS to avoid duplicates."""
+    existing_titles = {v["title"] for v in SAMPLE_VIDEOS}
+    expansion = []
+    for genre_name in TMDB_GENRE_IDS:
+        for movie in fetch_movies_by_genre(genre_name, count=20):
+            if movie["title"] in existing_titles:
+                continue
+            existing_titles.add(movie["title"])
+            expansion.append(movie)
+    return expansion
+
+
+SAMPLE_VIDEOS = SAMPLE_VIDEOS + build_genre_expansion()
+
+
 def seed():
     Base.metadata.create_all(bind=engine)
 
@@ -281,6 +385,11 @@ def seed():
                 continue
             db.add(models.Video(**video_data))
             created += 1
+            # Commit in small batches so a slow request that gets cut off
+            # partway through still keeps whatever was saved so far,
+            # instead of losing everything on one final commit.
+            if created % 20 == 0:
+                db.commit()
 
         db.commit()
         print(f"Seed complete: {created} video(s) added, {len(SAMPLE_VIDEOS) - created} already existed.")
