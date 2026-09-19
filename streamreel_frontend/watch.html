@@ -15,11 +15,12 @@
   .back-link{ color:var(--text); text-decoration:none; font-size:20px; }
   .back-link:hover{ color:var(--ember); }
   .logo{ font-family:'Bebas Neue',sans-serif; font-size:20px; color:var(--ember); }
-  video{ width:92%; max-width:1000px; margin-top:24px; border-radius:8px; background:#000; }
+  video, iframe{ width:92%; max-width:1000px; margin-top:24px; border-radius:8px; background:#000; border:none; }
+  video, iframe{ aspect-ratio:16/9; }
   h1{ font-family:'Bebas Neue',sans-serif; font-size:28px; margin:18px 0 4px; text-align:center; }
+  .trailer-note{ color:var(--muted); font-size:12px; margin-top:10px; }
   .status-msg{ color:var(--muted); margin-top:40px; font-size:14px; text-align:center; max-width:600px; padding:0 20px; }
   .status-msg.error{ color:#ff6b57; }
-  .url-shown{ color:var(--muted); font-size:11px; margin-top:10px; word-break:break-all; max-width:600px; text-align:center; padding:0 20px; }
 </style>
 </head>
 <body>
@@ -28,9 +29,12 @@
     <span class="logo">STREAMREEL</span>
   </div>
   <h1 id="videoTitle">Loading...</h1>
-  <video id="player" controls></video>
+
+  <video id="player" controls style="display:none;"></video>
+  <iframe id="ytPlayer" style="display:none;" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+
+  <div class="trailer-note" id="trailerNote"></div>
   <div class="status-msg" id="statusMsg"></div>
-  <div class="url-shown" id="urlShown"></div>
 
 <script>
   const params = new URLSearchParams(window.location.search);
@@ -40,15 +44,23 @@
   document.getElementById('videoTitle').textContent = title;
 
   const player = document.getElementById('player');
+  const ytPlayer = document.getElementById('ytPlayer');
   const statusMsg = document.getElementById('statusMsg');
-  const urlShown = document.getElementById('urlShown');
+  const trailerNote = document.getElementById('trailerNote');
 
   if (!url) {
     statusMsg.textContent = "No video URL was provided for this title.";
     statusMsg.className = "status-msg error";
+  } else if (url.includes('youtube.com/embed/')) {
+    // Real movie trailer from TMDB/YouTube.
+    ytPlayer.src = url;
+    ytPlayer.style.display = 'block';
+    trailerNote.textContent = "Official trailer";
   } else {
+    // Fallback sample clip.
+    player.style.display = 'block';
+    trailerNote.textContent = "Sample clip (no official trailer found for this title)";
     statusMsg.textContent = "Loading video...";
-    urlShown.textContent = url;
 
     player.addEventListener('loadeddata', () => {
       statusMsg.textContent = "";

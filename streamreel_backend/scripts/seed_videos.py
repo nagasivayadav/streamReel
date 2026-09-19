@@ -46,13 +46,15 @@ _tmdb_cache = {}
 
 
 def _tmdb_lookup(title):
-    """Searches TMDB for a title and returns (poster_url, backdrop_url), or
-    (None, None) if not found / API key not set / request fails."""
+    """Searches TMDB for a title and returns (poster_url, backdrop_url,
+    trailer_url), or (None, None, None) if not found / API key not set /
+    request fails. trailer_url points to a real YouTube trailer when TMDB
+    has one on file for that movie."""
     if title in _tmdb_cache:
         return _tmdb_cache[title]
 
     if not TMDB_API_KEY or TMDB_API_KEY == "PASTE_YOUR_TMDB_API_KEY_HERE":
-        return (None, None)
+        return (None, None, None)
 
     try:
         resp = requests.get(
@@ -62,27 +64,51 @@ def _tmdb_lookup(title):
         )
         results = resp.json().get("results", [])
         if not results:
-            _tmdb_cache[title] = (None, None)
-            return (None, None)
+            _tmdb_cache[title] = (None, None, None)
+            return (None, None, None)
 
         best = results[0]
+        movie_id = best.get("id")
         poster = f"{TMDB_IMAGE_BASE}{best['poster_path']}" if best.get("poster_path") else None
         backdrop = f"{TMDB_BACKDROP_BASE}{best['backdrop_path']}" if best.get("backdrop_path") else None
-        _tmdb_cache[title] = (poster, backdrop)
-        return (poster, backdrop)
+
+        trailer = None
+        if movie_id:
+            try:
+                vid_resp = requests.get(
+                    f"https://api.themoviedb.org/3/movie/{movie_id}/videos",
+                    params={"api_key": TMDB_API_KEY},
+                    timeout=8,
+                )
+                for v in vid_resp.json().get("results", []):
+                    if v.get("site") == "YouTube" and v.get("type") == "Trailer":
+                        trailer = f"https://www.youtube.com/embed/{v['key']}?autoplay=1"
+                        break
+            except Exception as e:
+                print(f"TMDB trailer lookup failed for '{title}': {e}")
+
+        _tmdb_cache[title] = (poster, backdrop, trailer)
+        return (poster, backdrop, trailer)
     except Exception as e:
         print(f"TMDB lookup failed for '{title}': {e}")
-        return (None, None)
+        return (None, None, None)
 
 
 def poster_for(title):
-    poster, _ = _tmdb_lookup(title)
+    poster, _, _ = _tmdb_lookup(title)
     return poster or _fallback_poster(title)
 
 
 def backdrop_for(title):
-    _, backdrop = _tmdb_lookup(title)
+    _, backdrop, _ = _tmdb_lookup(title)
     return backdrop or _fallback_backdrop(title)
+
+
+def trailer_for(title, fallback_url):
+    """Returns a real YouTube trailer embed URL if TMDB has one, otherwise
+    falls back to a sample clip from VIDEO_POOL so nothing breaks."""
+    _, _, trailer = _tmdb_lookup(title)
+    return trailer or fallback_url
 
 
 VIDEO_POOL = [
@@ -191,12 +217,13 @@ def build_catalog():
         + [(t, g, "Telugu") for t, g in TELUGU_TITLES]
     )
     for i, (title, genre, language) in enumerate(all_titles):
+        fallback_video = VIDEO_POOL[i % len(VIDEO_POOL)]
         catalog.append({
             "title": title,
             "genre": genre,
             "language": language,
             "duration": 6000 + (i % 5) * 300,
-            "hls_url": VIDEO_POOL[i % len(VIDEO_POOL)],
+            "hls_url": trailer_for(title, fallback_video),
             "poster_url": poster_for(title),
             "backdrop_url": backdrop_for(title),
             "is_featured": (i % 15 == 0),
@@ -205,6 +232,38 @@ def build_catalog():
 
 
 SAMPLE_VIDEOS = build_catalog()
+
+# --- Classic full-length movies, genuinely public domain, hosted on ---
+# --- Internet Archive. These actually play the complete film when     ---
+# --- clicked, unlike the modern titles above which only have trailers.
+CLASSIC_FULL_MOVIES = [
+    {
+        "title": "Night of the Living Dead", "genre": "Horror", "language": "English",
+        "duration": 5640,
+        "hls_url": "https://archive.org/download/night_of_the_living_dead/night_of_the_living_dead_512kb.mp4",
+        "poster_url": poster_for("Night of the Living Dead"),
+        "backdrop_url": backdrop_for("Night of the Living Dead"),
+        "is_featured": True,
+    },
+    {
+        "title": "His Girl Friday", "genre": "Comedy", "language": "English",
+        "duration": 5640,
+        "hls_url": "https://archive.org/download/HisGirlFriday/hisgirlfriday.mp4",
+        "poster_url": poster_for("His Girl Friday"),
+        "backdrop_url": backdrop_for("His Girl Friday"),
+        "is_featured": False,
+    },
+    {
+        "title": "The General", "genre": "Adventure", "language": "English",
+        "duration": 4620,
+        "hls_url": "https://archive.org/download/TheGeneral1926/The.General.1926.mp4",
+        "poster_url": poster_for("The General 1926"),
+        "backdrop_url": backdrop_for("The General 1926"),
+        "is_featured": False,
+    },
+]
+
+SAMPLE_VIDEOS = SAMPLE_VIDEOS + CLASSIC_FULL_MOVIES
 
 
 def seed():
